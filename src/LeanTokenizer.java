@@ -9,13 +9,22 @@ public class LeanTokenizer implements Tokenizer {
 
     //TODO: TASK 10
     public int[] fromTokenString(String tokenText, int index) {
+        if (index < 0 || index + 2 >= tokenText.length()) {
+            throw new IllegalArgumentException("Invalid index or tokenText");
+        }
 
-        return null;
+        char distanceChar = tokenText.charAt(index + 1);
+
+        char lengthChar = tokenText.charAt(index + 2);
+
+        int distance = (int) distanceChar;
+        int length = (int) lengthChar;
+
+        return new int[] {distance, length};
     }
 
     //TODO: TASK 10
     public String toTokenString(int distance, int length) {
-
-        return null;
+        return "^" + (char) distance + "," + (char) length + "^";
     }
 }
