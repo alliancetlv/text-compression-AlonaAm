@@ -33,86 +33,80 @@ public class LZLite {
 
     //TODO: TASK 3
     public String maxMatchInWindow(String input, int pos) {
-        int bestLength = 0;
-        int bestStart = -1;
+        String bestMatch = "";
+        int length = 1;
 
-        int windowStart = Math.max(0, pos - MAX_WINDOW_SIZE);
-
-        for (int i = windowStart; i < pos; i++) {
-            int length = 0;
-
-            while (pos + length < input.length() &&
-                    input.charAt(i + length) == input.charAt(pos + length)) {
+        while (pos + length <= input.length()) {
+            String substring = input.substring(pos, pos + length);
+            if (slidingWindow.contains(substring)) {
+                bestMatch = substring;
                 length++;
-                if (i + length >= pos) break;
-            }
-
-            if (length > bestLength) {
-                bestLength = length;
-                bestStart = i;
-            }
-        }
-
-        if (bestLength == 0) {
-            return "";
-        }
-
-        return input.substring(bestStart, bestStart + bestLength);
-    }
-
-    private String findMatch(String input, int pos, String window, int offset) {
-        int maxLength = 0;
-        String match = "";
-        for (int i = 0; i < input.length() - pos; i++) {
-            if (pos + i < input.length() && input.charAt(pos + i) == window.charAt(offset + i)) {
-                maxLength++;
-                match = input.substring(pos, pos + maxLength);
             } else {
-                break;
+                length = input.length() + 1;
             }
         }
-        return match;
+
+        return bestMatch;
     }
+
 
     //TODO: TASK 5
     public String zip(String input) {
-        StringBuilder st = new StringBuilder();
+        String compressed = "";
         int pos = 0;
 
         while (pos < input.length()) {
-            String match = maxMatchInWindow(input, pos);
-            if (match.length() > 1 && match.length() < input.substring(pos).length()) {
-                int distance = slidingWindow.indexOf(match);
-                st.append(tokenizer.toTokenString(distance, match.length()));
-                pos += match.length();
-            } else {
-                st.append(input.charAt(pos));
-                pos++;
+            String bestMatch = maxMatchInWindow(input, pos);
+            int matchLength = bestMatch.length();
+
+            if (matchLength >= 2) {
+                int matchIndex = slidingWindow.lastIndexOf(bestMatch);
+                if (matchIndex != -1) {
+                    int distance = slidingWindow.length() - matchIndex;
+                    String token = tokenizer.toTokenString(distance, matchLength);
+
+                    if (token.length() < matchLength) {
+                        compressed = compressed + token;
+                        appendToSlidingWindow(bestMatch);
+                        pos += matchLength;
+                        continue;
+                    }
+                }
             }
-            appendToSlidingWindow(input.substring(pos - 1, pos));
+
+            char currentChar = input.charAt(pos);
+            compressed = compressed + currentChar;
+            appendToSlidingWindow(String.valueOf(currentChar));
+            pos++;
         }
-        return st.toString();
+
+        return compressed;
     }
 
 
     //TODO: TASK 6
     public static String zipFileName(String fileName) {
-        if (!fileName.endsWith(".txt"))
+        if (!fileName.endsWith(".txt")) {
             return null;
-        return fileName.substring(0, fileName.length() - 4) + ".lz77.txt";
+        }
+        int txtIndex = fileName.lastIndexOf(".txt");
+        return fileName.substring(0, txtIndex) + ".lz77.txt";
     }
 
     //TODO: TASK 6
     public static String unzipFileName(String fileName) {
-        if (!fileName.endsWith(".lz77.txt"))
+        if (!fileName.endsWith(".lz77.txt")) {
             return null;
-        return fileName.substring(0, fileName.length() - 9) + ".decompressed.txt";
+        }
+        int lzIndex = fileName.lastIndexOf(".lz77.txt");
+        return fileName.substring(0, lzIndex) + ".decompressed.txt";
     }
 
     //TODO: TASK 7
     public static String zipFile(String file, int windowSize, boolean readable) {
         String newFileName = zipFileName(file);
-        if (newFileName == null) return null;
+        if (newFileName == null)
+            return null;
 
         String content = FileUtils.readFile(file);
         LZLite lzLite = new LZLite(windowSize, readable);
@@ -124,24 +118,26 @@ public class LZLite {
     //TODO: TASK 8
     public String unzip(String input) {
         String output = "";
-
         int i = 0;
-        while (i < input.length()) {
-            char c = input.charAt(i);
 
-            if (c == '^') {
+        while (i < input.length()) {
+            char ch = input.charAt(i);
+
+            if (ch == '^') {
                 int[] ref = tokenizer.fromTokenString(input, i);
                 int distance = ref[0];
                 int length = ref[1];
+                int tokenLength = ref[2];
 
-                int start = output.length() - distance;
-                String toCopy = output.substring(start, start + length);
+                int start = slidingWindow.length() - distance;
+                String match = slidingWindow.substring(start, start + length);
 
-                output += toCopy;
-
-                i += 3;
+                output = output+ match;
+                appendToSlidingWindow(match);
+                i += tokenLength;
             } else {
-                output += c;
+                output = output + ch;
+                appendToSlidingWindow(String.valueOf(ch));
                 i++;
             }
         }
@@ -151,19 +147,24 @@ public class LZLite {
 
     //TODO: TASK 9
     public static String unzipFile(String file, int windowSize, boolean readable) {
-        String newFileName = unzipFileName(file);
-        if (newFileName == null) return null;
+        String uncompressedFileName = unzipFileName(file);
+        if (uncompressedFileName == null) {
+            return null;
+        }
 
-        String content = FileUtils.readFile(file);
-        LZLite lzLite = new LZLite(windowSize, readable);
-        String decompressedContent = lzLite.unzip(content);
-        FileUtils.writeFile(newFileName, decompressedContent);
-        return newFileName;
+        String compressedText = FileUtils.readFile(file);
+        LZLite lz = new LZLite(windowSize, readable);
+        String uncompressedText = lz.unzip(compressedText);
+
+        FileUtils.writeFile(uncompressedFileName, uncompressedText);
+        return uncompressedFileName;
     }
 
     //TODO: TASK 9
     public static void main(String[] args) {
-
+        String zipFileName = zipFile("test_files/genesis.txt", MAX_WINDOW_SIZE, true);
+        String unzipFile = unzipFile(zipFileName, MAX_WINDOW_SIZE, true);
+        System.out.println("Unzip to " + unzipFile + " completed!");
     }
 
 

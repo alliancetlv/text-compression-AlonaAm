@@ -12,20 +12,24 @@ public class ReadableTokenizer implements Tokenizer {
 
     // TODO TASK 4
     public int[] fromTokenString(String tokenText, int index) {
-        int start = tokenText.indexOf('^', index);
-        int end = tokenText.indexOf('^', start + 1);
-        if (start == -1 || end == -1 || start >= end) {
-            throw new IllegalArgumentException("Invalid token format at index " + index);
+        int end = tokenText.indexOf('^', index + 1);
+        int comma = tokenText.indexOf(',', index + 1);
+
+        String distanceStr = tokenText.substring(index + 1, comma);
+        String lengthStr = tokenText.substring(comma + 1, end);
+
+        int distance = 0;
+        for (int i = 0; i < distanceStr.length(); i++) {
+            distance = distance * 10 + (distanceStr.charAt(i) - '0');
         }
 
-        String content = tokenText.substring(start + 1, end);
-        String[] parts = content.split(",");
-        if (parts.length != 2) {
-            throw new IllegalArgumentException("Invalid token content: " + content);
+        int length = 0;
+        for (int i = 0; i < lengthStr.length(); i++) {
+            length = length * 10 + (lengthStr.charAt(i) - '0');
         }
 
-        int distance = Integer.parseInt(parts[0].trim());
-        int length = Integer.parseInt(parts[1].trim());
-        return new int[] { distance, length };
+        int tokenLength = end - index + 1;
+
+        return new int[] { distance, length, tokenLength };
     }
 }
